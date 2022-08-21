@@ -78,6 +78,11 @@ public class DiningReviewController {
         }
     }
 
+    @GetMapping("/user")
+    public Iterable<User> getAllUsers() {
+        return this.userRepository.findAll();
+    }
+
     @PostMapping("/review")
     public DiningReview createReview(@RequestBody DiningReview diningReview) {
         if(this.userRepository.existsUserByDisplayName(diningReview.getSubmitUser()) && this.restaurantRepository.existsById(diningReview.getRestaurantId())) {
@@ -89,9 +94,29 @@ public class DiningReviewController {
         }
     }
 
+    @GetMapping("/review")
+    public Iterable<DiningReview> getAllReviews() {
+        return this.diningReviewRepository.findAll();
+    }
+
+    @GetMapping("/review/accepted")
+    public List<DiningReview> getAllAcceptedReviews() {
+        return this.diningReviewRepository.findByReviewStatus(ReviewStatus.ACCEPTED);
+    }
+
     @GetMapping("/review/pending")
     public List<DiningReview> getPendingReviews() {
         return this.diningReviewRepository.findByReviewStatus(ReviewStatus.PENDING);
+    }
+
+    @GetMapping("/review/rejected")
+    public List<DiningReview> getAllRejectedReviews() {
+        return this.diningReviewRepository.findByReviewStatus(ReviewStatus.REJECTED);
+    }
+
+    @GetMapping("/review/{restaurantId}")
+    public List<DiningReview> getAllAcceptedReviewsForARestaurant(@PathVariable Long restaurantId) {
+        return this.diningReviewRepository.findByReviewStatusAndRestaurantId(ReviewStatus.ACCEPTED, restaurantId);
     }
 
     @PutMapping("/review/{id}")
@@ -108,6 +133,7 @@ public class DiningReviewController {
         } else {
             ReviewStatus newStatus = adminReviewAction.getAccept() ? ReviewStatus.ACCEPTED : ReviewStatus.REJECTED;
             reviewToUpdate.setReviewStatus(newStatus);
+            this.diningReviewRepository.save(reviewToUpdate);
 
             List<DiningReview> reviews = this.diningReviewRepository.findByReviewStatusAndRestaurantId(ReviewStatus.ACCEPTED, reviewToUpdate.getRestaurantId());
             int[] counts = {0, 0, 0};
@@ -121,12 +147,18 @@ public class DiningReviewController {
                 counts[2] += review.getDairyScore() != 0 ? 1 : 0;
                 sums[2] += review.getDairyScore() != 0 ? review.getDairyScore() : 0;
             }
-            restaurantToUpdate.setPeanutScore((double)sums[0]/(double)counts[0]);
-            restaurantToUpdate.setEggScore((double)sums[1]/(double)counts[1]);
-            restaurantToUpdate.setDairyScore((double)sums[2]/(double)counts[2]);
+            if(counts[0] > 0) {
+                restaurantToUpdate.setPeanutScore((double) sums[0] / (double) counts[0]);
+            }
+            if(counts[1] > 0) {
+                restaurantToUpdate.setEggScore((double) sums[1] / (double) counts[1]);
+            }
+            if(counts[2] > 0) {
+                restaurantToUpdate.setDairyScore((double) sums[2] / (double) counts[2]);
+            }
             this.restaurantRepository.save(restaurantToUpdate);
 
-            return this.diningReviewRepository.save(reviewToUpdate);
+            return reviewToUpdate;
         }
     }
 
@@ -149,7 +181,7 @@ public class DiningReviewController {
         }
     }
 
-    @GetMapping("restaurant/{zipcode}")
+    @GetMapping("restaurant/nearby/{zipcode}")
     public List<Restaurant> getNearbyFullyReviewedRestaurant(@PathVariable String zipcode) {
         return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(zipcode, 1.0, 1.0, 1.0);
     }
@@ -164,21 +196,21 @@ public class DiningReviewController {
         if(theUser.getZipcode() == null) {
             throw new ResponseStatusException(HttpStatus.NO_CONTENT, "Please update the user's information first!");
         } else if(theUser.getPeanutAllergies() && theUser.getEggAllergies() && theUser.getDairyAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 4.0, 4.0, 4.0);
+            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 3.0, 3.0, 3.0);
         } else if(theUser.getPeanutAllergies() && theUser.getEggAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqual(theUser.getZipcode(), 4.0, 4.0);
+            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqual(theUser.getZipcode(), 3.0, 3.0);
         } else if(theUser.getPeanutAllergies() && theUser.getDairyAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 4.0, 4.0);
+            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 3.0, 3.0);
         } else if(theUser.getEggAllergies() && theUser.getDairyAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 4.0, 4.0);
+            return this.restaurantRepository.findByZipcodeAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 3.0, 3.0);
         } else if(theUser.getPeanutAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqual(theUser.getZipcode(), 4.0);
+            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqual(theUser.getZipcode(), 3.0);
         } else if(theUser.getEggAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndEggScoreGreaterThanEqual(theUser.getZipcode(), 4.0);
+            return this.restaurantRepository.findByZipcodeAndEggScoreGreaterThanEqual(theUser.getZipcode(), 3.0);
         } else if(theUser.getDairyAllergies()) {
-            return this.restaurantRepository.findByZipcodeAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 4.0);
+            return this.restaurantRepository.findByZipcodeAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 3.0);
         } else {
-            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 4.0, 4.0, 4.0);
+            return this.restaurantRepository.findByZipcodeAndPeanutScoreGreaterThanEqualAndEggScoreGreaterThanEqualAndDairyScoreGreaterThanEqual(theUser.getZipcode(), 3.0, 3.0, 3.0);
         }
     }
 }
