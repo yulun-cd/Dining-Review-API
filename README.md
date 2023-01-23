@@ -3,6 +3,9 @@
 This API enables users to post dining reviews for restaurants, with specific allergic information. It also supports recommending nearby restaurants to a user
 according to his/her location.
 
+## Usage:
+Run the `DiningReviewApplication.java` under 'src/main/java/com/mario/DiningReview'.
+
 ## Endpoints:
 - `user` endpoint: allow creating new user and update existing user, as well as getting a full list of all users.
   - `GET` - `'/user'`: get a json output of a full list of all the existing users.
